@@ -90,4 +90,5 @@ df2 <- df %>% mutate(Month = month(Date))
   
 
 ggplot(df2, aes(x=day(Date), y=volume_sold)) + geom_point() + geom_line() + facet_wrap(~Month) + xlab("Day") + ylab("Volume Sold (Gallons)") + ggtitle("Liquor Sold for Each Month")
+### The dates for home football games in 2018 were 9/1, 9/15, 9/22, 10/13, 10/27, 11/10, 11/24, and 12/1. It is hard to tell whether liquor sales spiked on these days since there is a lot of data missing from the plot, but there does not seem to be any spikes in sales in November on game days.
 ```
