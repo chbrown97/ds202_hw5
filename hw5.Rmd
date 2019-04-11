@@ -1,0 +1,93 @@
+---
+title: "hw5"
+author: "ColinBrown"
+date: "April 11, 2019"
+output: html_document
+---
+
+```{r}
+if (file.exists("alcohol.rds")) {
+  data <- readRDS("alcohol.rds")
+} else {
+  url <- "https://xdaiisu.github.io/ds202materials/data/ames.csv"
+  data <- readr::read_csv(url)
+  saveRDS(data, file="alcohol.rds")
+} 
+
+```
+
+```{r}
+# 2. Data Cleaning
+library(tidyr)
+library(dplyr)
+library(stringr)
+
+cleanData <- data.frame(data = data)
+
+### Separating Latitude and Longitude data
+cleanData <- data %>% separate('Store Location', into=c('Store_Location_Address', 'ZIP', 'LatLong'), sep='\n') %>% 
+  mutate(Store_Location_Address=NULL, ZIP=NULL) %>%
+  mutate(LatLong = str_remove_all(LatLong, "[()]")) %>%
+  separate('LatLong', into=c('Latitude', 'Longitude'), sep=', ')
+
+### Separating Date data
+cleanData2 <- cleanData %>% separate('Date', into=c('Month', 'Day', 'Year'), sep='/')
+
+### Changing variable types
+str(cleanData2)
+
+cleanData3 <- cleanData2 %>% mutate(
+  Month = as.integer(Month),
+  Day = as.integer(Day),
+  Year = as.integer(Year),
+  Latitude = as.double(Latitude),
+  Longitude = as.double(Longitude)
+)
+```
+
+```{r}
+# 3. First Overview
+library(ggplot2)
+
+ggplot(cleanData3, aes(x=Longitude, y=Latitude)) + geom_point() + ggtitle("Store Locations by Coordinates")
+
+### For part two, since there are too many categories to visualize, I select the top 20 categories based on highest total volumes sold and make a visualization with just these 20.
+
+rankedCategories <- cleanData3 %>% 
+  group_by(`Category Name`) %>%
+  summarize(sum = sum(`Volume Sold (Gallons)`))
+arrange(rankedCategories, desc(sum))
+
+rankedCategories <- arrange(rankedCategories, desc(sum))
+top20 <- rankedCategories[1:20,]
+### Here is a visualization of the total volume sold for the top 20 best-selling categories
+ggplot(top20, aes(x=reorder(`Category Name`, sum))) + geom_bar(aes(weight=sum)) + xlab("Liquor Category") + ylab("Total Volume Sold (Gallons)") + ggtitle("Top 20 Categories by Total Volume Sold") + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+### Here is a visual of the spread of volume sold for the top 20 categories
+categoryVector <- top20[[1,]]
+top20df <- filter(cleanData3, `Category Name` %in% categoryVector)
+
+ggplot(top20df, aes(x=`Category Name`, y=`Volume Sold (Gallons)`)) + geom_boxplot() + xlab("Category") + ylab("Volume Sold (Gallons)") + ggtitle("Spread of Volume Sold for the Top 20 Categories")
+```
+
+```{r}
+# 4.
+
+df <- cleanData3 %>% filter(Year == 2018) %>%
+  mutate(Date = paste(as.character(Month), as.character(Day), as.character(Year), sep="/")) %>%
+  group_by(Date) %>%
+  summarize(number_of_sales = n(),
+            volume_sold = sum(`Volume Sold (Gallons)`),
+            money_spent = sum(`State Bottle Retail`)) 
+head(df)
+
+library(lubridate)
+
+df$Date <- mdy(df$Date)
+df <- arrange(df, Date)
+
+df2 <- df %>% mutate(Month = month(Date))
+  
+
+ggplot(df2, aes(x=day(Date), y=volume_sold)) + geom_point() + geom_line() + facet_wrap(~Month) + xlab("Day") + ylab("Volume Sold (Gallons)") + ggtitle("Liquor Sold for Each Month")
+```
